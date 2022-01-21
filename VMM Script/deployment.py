@@ -2,8 +2,8 @@ def main():
     import epginput as data
     from MasterVMM import Client
     host = "172.28.239.5"
-    usr = "apic#fallback\\admin"
-    pwd = "J21@:fwD"
+    usr = "####"
+    pwd = "#####"
     i = input("Enter the no.of EPG's you want to Change:")
     for x in range(int(i)):
      try:
