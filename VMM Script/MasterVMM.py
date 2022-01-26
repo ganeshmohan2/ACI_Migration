@@ -34,8 +34,14 @@ class Client:
 
     def VMM(self,Tname,APP,EPG,DOMAIN): 
         Role='T1:VMM change on :{},EPG:{}'.format(Tname,EPG) 
-        print("\nConfigure the EPG test:{}\n".format(Tname))  
+        print("\nConfiguring the EPG:{}\n".format(EPG))  
         data ={"fvRsDomAtt":{"attributes":{"primaryEncap":"","resImedcy":"pre-provision","tDn":"uni/vmmp-VMware/"+DOMAIN,"status":"modified"},"children":[]}}
+        return self.POST('/api/node/mo/uni/tn-{}/ap-{}/epg-{}/rsdomAtt-[uni/vmmp-VMware/{}].json'.format(Tname,APP,EPG,DOMAIN), data,Role)
+ 
+    def VMM_rollback(self,Tname,APP,EPG,DOMAIN): 
+        Role='T1:VMM change on :{},EPG:{}'.format(Tname,EPG) 
+        print("\nConfiguring the EPG:{}\n".format(EPG))  
+        data ={"fvRsDomAtt":{"attributes":{"primaryEncap":"","resImedcy":"immediate","tDn":"uni/vmmp-VMware/"+DOMAIN,"status":"modified"},"children":[]}}
         return self.POST('/api/node/mo/uni/tn-{}/ap-{}/epg-{}/rsdomAtt-[uni/vmmp-VMware/{}].json'.format(Tname,APP,EPG,DOMAIN), data,Role)
 
 def main():
