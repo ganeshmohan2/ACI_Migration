@@ -1,0 +1,113 @@
+
+[gmohan@vmwhnsoxs01 Ansible]$ ls
+acl_ipv6.yml  hosts  host_vars  iosxe-acl_ipv6.yml  iosxe-acl_ipv6.yml.save  iosxr-acl_ipv6.yml
+[gmohan@vmwhnsoxs01 Ansible]$
+[gmohan@vmwhnsoxs01 Ansible]$
+[gmohan@vmwhnsoxs01 Ansible]$ more iosxe-acl_ipv6.yml
+---
+- name: configure IPv6 access-list for Mgmt Access
+  connection: network_cli
+  hosts: IOS-XE
+  gather_facts: false
+  tasks:
+  - name: configure IPv6 access-list
+    ios_config:
+     lines:
+      - permit ipv6 2001:5B0:1E40::/48 any
+      - permit ipv6 2001:5B0:1E4D::/48 any
+      - permit ipv6 2001:5B0:1E00::/40 any
+      - permit ipv6 2001:5B0:1D00::/40 any
+      - permit ipv6 2001:5B0:1FFE::/48 any
+      - permit ipv6 2001:5B0:1FFF::/48 any
+      - permit ipv6 2001:5B0:1F00::/40 any
+     parents: ipv6 access-list ipv6_102
+     match: exact
+
+  - name: apply the ACL on line vty's
+    ios_config:
+     lines:
+      - ipv6 access-class ipv6_102 in
+     parents: line vty 0 15
+
+  - name: postcheck access-list configuration
+    ios_command:
+      commands:
+        - sh ipv6 access-list ipv6_102
+        - sh run | sec line vty 0 4
+        - sh run | sec line vty 0 4
+    register: output
+  - name: display all
+    debug:
+      var: output.stdout
+...
+[gmohan@vmwhnsoxs01 Ansible]$
+[gmohan@vmwhnsoxs01 Ansible]$ more iosxr-acl_ipv6.yml
+---
+- name: configure IPv6 access-list for Mgmt Access
+  connection: network_cli
+  hosts: IOS-XR
+  gather_facts: false
+  tasks:
+  - name: configure IPv6 access-list
+    iosxr_config:
+     lines:
+      - permit ipv6 2001:5B0:1E40::/48 any
+      - permit ipv6 2001:5B0:1E4D::/48 any
+      - permit ipv6 2001:5B0:1E00::/40 any
+      - permit ipv6 2001:5B0:1D00::/40 any
+      - permit ipv6 2001:5B0:1FFE::/48 any
+      - permit ipv6 2001:5B0:1FFF::/48 any
+      - permit ipv6 2001:5B0:1F00::/40 any
+     parents: ipv6 access-list 102
+     match: exact
+
+  - name: postcheck access-list configuration
+    iosxr_command:
+      commands:
+         - "sh access-list ipv6 102"
+
+    register: output
+  - name: Display the output
+    debug:
+      var: output.stdout
+...
+[gmohan@vmwhnsoxs01 Ansible]$
+[gmohan@vmwhnsoxs01 Ansible]$
+[gmohan@vmwhnsoxs01 Ansible]$ ls
+acl_ipv6.yml  hosts  host_vars  iosxe-acl_ipv6.yml  iosxe-acl_ipv6.yml.save  iosxr-acl_ipv6.yml
+[gmohan@vmwhnsoxs01 Ansible]$
+[gmohan@vmwhnsoxs01 Ansible]$ more hosts
+[IOS-XR]
+j2draicprc01
+
+[IOS-XE]
+j2draicbgp01
+[gmohan@vmwhnsoxs01 Ansible]$
+
+
+[gmohan@vmwhnsoxs01 Ansible]$ ansible-playbook iosxe-acl_ipv6.yml -i hosts
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+
+PLAY [configure IPv6 access-list for Mgmt Access] *******************************************************************************************************************************************************************************************
+
+TASK [configure IPv6 access-list] ***********************************************************************************************************************************************************************************************************
+ok: [j2draicbgp01]
+
+TASK [apply the ACL on line vty's] **********************************************************************************************************************************************************************************************************
+changed: [j2draicbgp01]
+
+TASK [postcheck access-list configuration] **************************************************************************************************************************************************************************************************
+ok: [j2draicbgp01]
+
+TASK [display all] **************************************************************************************************************************************************************************************************************************
+ok: [j2draicbgp01] => {
+    "output.stdout": [
+        "IPv6 access list ipv6_102\n    permit ipv6 2001:5B0:1E40::/48 any sequence 10\n    permit ipv6 2001:5B0:1E4D::/48 any sequence 20\n    permit ipv6 2001:5B0:1E00::/40 any sequence 30\n    permit ipv6 2001:5B0:1D00::/40 any sequence 40\n    permit ipv6 2001:5B0:1FFE::/48 any sequence 50\n    permit ipv6 2001:5B0:1FFF::/48 any sequence 60\n    permit ipv6 2001:5B0:1F00::/40 any sequence 70",
+        "line vty 0 4\n access-class 102 in vrf-also\n ipv6 access-class ipv6_102 in\n transport input ssh",
+        "line vty 0 4\n access-class 102 in vrf-also\n ipv6 access-class ipv6_102 in\n transport input ssh"
+    ]
+}
+
+PLAY RECAP **********************************************************************************************************************************************************************************************************************************
+j2draicbgp01               : ok=4    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
