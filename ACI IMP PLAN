@@ -1,16 +1,38 @@
-*******************************************************************************************	
-Requirement:	
-Tenant: Anycast_tn	
-VRF: DNS_Appliance_vrf	
-VLAN: 124	
-BGP AS:	64514
-ACI AS: 64514	
-BGP Peering IP : 172.28.208.132/27, 172.28.208.133/27, 172.28.208.134/27, 172.28.208.135/27
-ACI interface: 172.28.208.129/27, 172.28.208.130/27, Secondary: 172.28.208.131	
-	
-	
-***************************************************************************************************	
-Implementation Plan: 	
+Access Policy:
+**************
+Task 1: Create the VPC policy:
+1. Go to Access policy-> policies -> switch-> Virtual Port channel default ->
+Name:Anthos_vpc
+id:111
+switch1: 111
+switch2: 112
+!
+Make sure the new virtual IP for the new Anthos-vpc connection.
+
+1. Go to Access policy-> policies -> Port channel-> Create the Port Channel policy -> Anthos_Portchannel -> Mode:"LACP Active" with default options.
+
+Task 2: Configure the Access Policy:
+*************************************
+1. Go to Access policy-> switches profile:ac3asdssw0102 on Node (111-112).
+2. Create ac3asdssw0102 Interface policy:ac3asdssw0102_intProf -> Add the new interface E1/35-36 with assoication of SDGAnthos_VPC_PolGrp.
+3. Create Anthos_VPC_PolGrp -> select Link Aggregation Type: VPC, associate the policy:Anthos_Portchannel, associate CDP disable, Enable LLDP, Link local scope, and SDGAnthos_aaep policys.
+4. Create SDGAnthos_aaep -> associate the Physical domain "SDGAnthos_phy" and vlan pool : "SDGAnthos_vlans"
+5. Create SDGAnthos_phy" associate the vlan pool : "SDGAnthos_vlans"
+6. Create vlan pool : "SDGAnthos_vlans" with static vlan 1280 & 1281.
+
+Task 3:
+Logical Configurtion:
+********************
+1, Create the new SDG_Anthos tenant -> with Application profile: K8S
+2. Create the Anthos_VRF and BD [Anthos_Untrust & DSS-SDG] with L2 unicast:Flood and L3 unicast disable.
+3. Create the EPG [Anthos_untrust & DSS-SDG] and associate the BD with Physical domain SDGAnthos_phy.
+4. go to DSS-SDG_EPG,static port assign the VPC "Anthos_vpc"with vlan-1280 as Trunk.
+5. go to Anthos_untrust_EPG,static port assign the VPC "Anthos_vpc"  with vlan-1281 as Trunk.
+6. Anthos_untrust_EPG: configure the 66.82.89.129/28 on subnet
+7. Export the contract "internet_cn" from internet tenant to SDG_Anthos.
+8. Apply the consumer contract interface on Anthos_untrust_EPG.
+
+
 ********************	
 Call NMC before the CW	
 1. log into nlv-apic-01 and take snapshot of the fabric	
@@ -50,3 +72,46 @@ Verification:
 ************
 Make sure no fault on Anycast_tn and new faults on whole fabric.
 Verify the Layer3 connectivity using ping & BGP neighbor establishment.
+
+Implentation Plan:
+*******************
+Call the NMC before the change; Log into AC3-APIC-01 and take a snapshot of Internet,  tenant tn, ConsumerNW_tn and the Whole Fabric.
+Call the GTN TS, to bring up the interface on leaf ac3/ac5-leaf-04 port eth1/14.
+1. Go to Access policy-> Create AC5-CR-TI-0506_108_110_SW_Pro with Node 108 and Node 110.
+2. Create AC5-CR-TI-0506_108_110_INT_Pro with port E1/6 then assoicate AC5-CR-TI-0506_108_110_SW_Pro and AC5-CR-TI-0506_108_110_PolGrp.
+3. Create AC5-CR-TI-0506_108_110_PolGrp with associate CDP disable, Enable LLDP, Link local scope, and ext_Internet_l3dom_AttEntityP policys.
+4. Create a new Physical-domain : AC5-CR-TI-0506_phys associate with VLAN Pool:gtn_nads pool and existing AAEP pofile: ext_Internet_l3dom_AttEntityP
+5. VLAN Pool :gtn_nads pool : Add vlan static [710-717]
+
+Logical Configuration:
+*********************
+5. Tenant:
+A. Go to Internet_tn.
+   ac5_core_l3out l3out
+   1. Logical Node Profile: ext_Internet_intProf Add Node 108 & 110 with 0.108.0.0 and 0.110.0.0 Router ID accordingly..
+   2. Logical interface Profile: ext_Internet_intProf
+       SVI [ 108 on E1/6 with IP address 66.82.16.137/28 on vlan-64 with Encap Scope VRF] with secondary IP 66.82.16.132/28.
+	   SVI [ 110 on E1/6 with IP address 66.82.16.138/28 on vlan-64 with Encap Scope VRF] with secondary IP 66.82.16.132/28.
+   3. Configured Nodes -> topology -> node-108 & node-110
+      Configure the static on new leaf : Add static route 0.0.0.0/0 Nexthop -> 66.82.16.129.
+	  
+     ac5_core_l3out l3out_v6
+   1. Logical Node Profile: ext_Internet_intProf_v6: Add Node 108 & 110 with 0.108.0.0 and 0.110.0.0 Router ID accordingly..
+   2. Logical interface Profile: ext_Internet_intProf_v6
+       SVI [ 108 on E1/6 with IP address 2001:5B0:0:1:50::8/120 on vlan-64 with Encap Scope VRF] with existing secondary IP 2001:5B0:0:1:50::3/120
+	   SVI [ 110 on E1/6 with IP address 2001:5B0:0:1:50::9/120 on vlan-64 with Encap Scope VRF] with existing secondary IP 2001:5B0:0:1:50::3/120
+   3. Configured Nodes -> topology ->  node-108 & node-110
+      Configure the static on new leaf : Add static route ::/0 Nexthop -> 2001:5B0:0:1:50::1.
+	  	  
+
+B. Go to ConsumerNW_tn.
+   HT2100L-INT-B_l3out l3out
+   1. Logical Node Profile: HT2100L-INT-B:Add Node 108 & 110 with 108.108.108.97 and 110.110.110.97 Router ID accordingly..
+   2. Logical interface Profile: HT2100L-INT-B
+       BGP peering 169.254.0.7 & 169.254.0.8 with AS
+       SVI [ 108 on E1/6 with IP address 169.254.0.9/28 on vlan-97 with Encap Scope VRF] with existing secondary IP 169.254.0.6/28.
+	   SVI [ 110 on E1/6 with IP address 169.254.0.10/28 on vlan-97 with Encap Scope VRF] with existing secondary IP 169.254.0.6/28.
+	   with BGP peering 169.254.0.8 & 169.254.0.8 with remote AS 64512
+
+
+
