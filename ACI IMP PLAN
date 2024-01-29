@@ -1,0 +1,52 @@
+*******************************************************************************************	
+Requirement:	
+Tenant: Anycast_tn	
+VRF: DNS_Appliance_vrf	
+VLAN: 124	
+BGP AS:	64514
+ACI AS: 64514	
+BGP Peering IP : 172.28.208.132/27, 172.28.208.133/27, 172.28.208.134/27, 172.28.208.135/27
+ACI interface: 172.28.208.129/27, 172.28.208.130/27, Secondary: 172.28.208.131	
+	
+	
+***************************************************************************************************	
+Implementation Plan: 	
+********************	
+Call NMC before the CW	
+1. log into nlv-apic-01 and take snapshot of the fabric	
+2. Add static vlan 124 to the "Anycast_vlans" pool
+3. Create a a new L3out domain "DNS_Appliance_l3out_Dom" and associate it with "DNS_Appliance_aaep" and the vlan pool "Anycast_vlans"
+4. Create a switch profile "DNS_Appliance_SWProf" with nodes 101 and 102 and associate "DNS_Appliance_IntProf"	
+5. create interface profile "DNS_Appliance_IntProf" with interfaces eth1/17-18 & Eth1/47 & E1/12 with association of "DNS_Appliance_PolGrp"	
+6. Create DNS_Appliance_PolGrp -> associate CDP disable, Enable LLDP, Link local scope, and DNS_Appliance_aaep.	
+	
+Creating Tenant:	
+1. Create a new tenant "Anycast_tn"	
+2. Create a new vrf "DNS_Appliance_vrf" in the new tenant	
+3. Create a L3out "DNS_Appliance_l3out" associate with the "DNS_Appliance_vrf" and "DNS_Appliance_l3out_Dom"	
+3. Configure the Router-ID : Node 101: 101.101.1.1 & Node 102: 102.102.1.1
+4. Enable BGP 	
+5. Configure the SVI interfaces 	
+	Node 101 eth 1/47 - 172.28.208.129/27 on SVI VLAN 124 with Trunk mode.
+	Node 101 eth 1/12 - 172.28.208.129/27 on SVI VLAN 124 with Trunk mode.
+	Node 101 eth 1/17 - 172.28.208.129/27 on SVI VLAN 124 with Trunk mode.
+	Node 101 eth 1/18 - 172.28.208.129/27 on SVI VLAN 124 with Trunk mode.
+	!
+	Node 102 eth 1/47 - 172.28.208.130/27 on SVI VLAN 124 with Trunk mode.
+	Node 102 eth 1/12 - 172.28.208.130/27 on SVI VLAN 124 with Trunk mode.
+	Node 102 eth 1/17 - 172.28.208.130/27 on SVI VLAN 124 with Trunk mode.
+	Node 102 eth 1/18 - 172.28.208.130/27 on SVI VLAN 124 with Trunk mode.
+
+	with Secondary IP: 172.28.208.131.
+	
+6. BGP peer Profile	
+   Neighbor IP 172.28.208.132,172.28.208.133,172.28.208.134,172.28.208.134 using local AS & Remote AS as 64514
+7. Create the EPG Subnet Anycast_Ntwk
+    10.25.255.9/32 External Subnet for the External EPG,shared Route control subnet,Shared security import subnet.
+	
+	
+	
+Verification:
+************
+Make sure no fault on Anycast_tn and new faults on whole fabric.
+Verify the Layer3 connectivity using ping & BGP neighbor establishment.
